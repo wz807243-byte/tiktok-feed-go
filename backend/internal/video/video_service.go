@@ -6,6 +6,8 @@ import (
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type VideoService struct {
@@ -100,3 +102,12 @@ func (vs *VideoService) ListByAuthorID(ctx context.Context, id uint) ([]Video, e
 // 		}
 // 	}
 // }
+
+func (vr *VideoRepository) UpdatePopularity(ctx context.Context, id uint, change int64) error {
+	if err := vr.db.WithContext(ctx).Model(&Video{}).
+		Where("id = ?", id).
+		Update("popularity", gorm.Expr("popularity + ?", change)).Error; err != nil {
+		return err
+	}
+	return nil
+}

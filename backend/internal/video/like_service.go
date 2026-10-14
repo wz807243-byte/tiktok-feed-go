@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"errors"
+	"feedsystem_video_go/internal/middleware/rabbitmq"
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"time"
 
@@ -16,16 +17,21 @@ func isDupKey(err error) bool {
 }
 
 type LikeService struct {
-	repo      *LikeRepository
-	VideoRepo *VideoRepository
-	cache     *rediscache.Client
+	repo         *LikeRepository
+	VideoRepo    *VideoRepository
+	cache        *rediscache.Client
+	likeMQ       *rabbitmq.LikeMQ
+	popularityMQ *rabbitmq.PopularityMQ
 }
 
-func NewLikeService(repo *LikeRepository, VideoRepo *VideoRepository, cache *rediscache.Client) *LikeService {
+func NewLikeService(repo *LikeRepository, VideoRepo *VideoRepository, cache *rediscache.Client,
+	likeMQ *rabbitmq.LikeMQ, popularityMQ *rabbitmq.PopularityMQ) *LikeService {
 	return &LikeService{
-		repo:      repo,
-		VideoRepo: VideoRepo,
-		cache:     cache,
+		repo:         repo,
+		VideoRepo:    VideoRepo,
+		cache:        cache,
+		likeMQ:       likeMQ,
+		popularityMQ: popularityMQ,
 	}
 }
 
@@ -57,6 +63,19 @@ func (ls *LikeService) Like(ctx context.Context, like *Like, cache *rediscache.C
 	like.CreatedAt = time.Now()
 	mysqlEnqueued := false
 	redisEnqueued := false
+	if ls.likeMQ.Like(ctx, like.AccountID, like.VideoID); err == nil {
+		mysqlEnqueued = true
+	}
+
+	if ls.popularityMQ != nil {
+		if err := ls.popularityMQ.Update(ctx, like.VideoID, 1); err == nil {
+			redisEnqueued = true
+		}
+	}
+	if mysqlEnqueued && redisEnqueued {
+		return nil
+	}
+
 	if !mysqlEnqueued {
 		err := ls.repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			if err := tx.Select("id").First(&Video{}, like.VideoID).Error; err != nil {

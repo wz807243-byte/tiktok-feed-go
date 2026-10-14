@@ -66,7 +66,7 @@ func SetRouter(db *gorm.DB, cache *rediscache.Client, rmq *rabbitmq.RabbitMQ) *g
 	// like
 
 	likeRepository := video.NewLiekRepostiory(db)
-	likeService := video.NewLikeService(likeRepository, videoRepository, cache)
+	likeService := video.NewLikeService(likeRepository, videoRepository, cache, &rabbitmq.LikeMQ{}, &rabbitmq.PopularityMQ{})
 	likeHandler := video.NewLikeHandler(likeService)
 	likeGroup := r.Group("/like")
 	protectedLikeGroup := likeGroup.Group("")
