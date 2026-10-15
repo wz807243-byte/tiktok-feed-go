@@ -36,11 +36,36 @@ func (vs *VideoService) Publish(ctx context.Context, video *Video) error {
 	if video.CoverURL == "" {
 		return errors.New("CoverURL is nil	")
 	}
-	if err := vs.videorepo.CreateVideo(ctx, video); err != nil {
-		return err
-	}
-	return nil
+
+	err := vs.videorepo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(video).Error; err != nil {
+			return err
+		}
+		msg := OutboxMsg{
+			VideoID:    video.ID,
+			EventType:  "video_published",
+			Status:     "pending",
+			CreateTime: video.CreateTime,
+		}
+		if err := tx.Create(&msg).Error; err != nil {
+			return err
+		}
+		tags := ExtractTags(video.Title + " " + video.Description)
+		for _, tagName := range tags {
+			var tag Tag
+			if err := tx.Where("name = ?", tagName).FirstOrCreate(&tag, Tag{Name: tagName}).Error; err != nil {
+				return err
+			}
+			if err := tx.Create(&VideoTag{VideoID: video.ID, TagID: tag.ID}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return err
+
 }
+
 func (vs *VideoService) ListByAuthorID(ctx context.Context, id uint) ([]Video, error) {
 	if id == 0 {
 		return nil, errors.New("id is nil")
@@ -102,12 +127,3 @@ func (vs *VideoService) ListByAuthorID(ctx context.Context, id uint) ([]Video, e
 // 		}
 // 	}
 // }
-
-func (vr *VideoRepository) UpdatePopularity(ctx context.Context, id uint, change int64) error {
-	if err := vr.db.WithContext(ctx).Model(&Video{}).
-		Where("id = ?", id).
-		Update("popularity", gorm.Expr("popularity + ?", change)).Error; err != nil {
-		return err
-	}
-	return nil
-}

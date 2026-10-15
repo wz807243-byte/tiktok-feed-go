@@ -9,6 +9,8 @@ import (
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"feedsystem_video_go/internal/social"
 	"feedsystem_video_go/internal/video"
+	"feedsystem_video_go/internal/worker"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -130,6 +132,16 @@ func SetRouter(db *gorm.DB, cache *rediscache.Client, rmq *rabbitmq.RabbitMQ) *g
 	protectedMessageGroup.Use(jwt.JWTAuth(accountRepository, cache))
 	protectedMessageGroup.POST("/send", messageHandler.Send)
 	protectedMessageGroup.POST("/list", messageHandler.List)
+
+	//worker
+	timelineMQ, err := rabbitmq.NewTimelineMQ(rmq)
+	if err != nil {
+		log.Printf("timelineMQ init failed (mq disabled): %v", err)
+		timelineMQ = nil
+	}
+	worker.StartOutboxPoller(db, timelineMQ)
+	worker.StartConsumer(timelineMQ, "video.timeline.update.queue", cache, rmq)
+
 	return r
 
 }

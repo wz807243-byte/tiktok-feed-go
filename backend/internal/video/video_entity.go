@@ -15,16 +15,6 @@ type Video struct {
 	Popularity  int64     `gorm:"column:popularity;not null;default:0;index:idx_videos_popularity_time_id,priority:1,sort:desc" json:"popularity"`
 }
 
-// Tag and VideoTag back the feed repository's list-by-tag query.
-type Tag struct {
-	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"type:varchar(255);not null;uniqueIndex" json:"name"`
-}
-
-type VideoTag struct {
-	VideoID uint `gorm:"primaryKey;index:idx_video_tags_tag_video,priority:2" json:"video_id"`
-	TagID   uint `gorm:"primaryKey;index:idx_video_tags_tag_video,priority:1" json:"tag_id"`
-}
 
 type PublishVideoRequest struct {
 	Title       string `json:"title"`

@@ -33,7 +33,7 @@ func (h *FeedHandler) ListLatest(c *gin.Context) {
 	}
 	viewerAccountID, err := jwt.GetAccountID(c)
 	if err != nil {
-		viewerAccountID = 0 // SoftJWTAuth permits anonymous feed requests.
+		viewerAccountID = 0
 	}
 	feedItems, err := h.service.ListLatest(c.Request.Context(), req.Limit, LatestTime, viewerAccountID)
 	if err != nil {
