@@ -135,6 +135,18 @@ func (ls *LikeService) ULike(ctx context.Context, like *Like) error {
 
 	mysqlEnqueued := false
 	redisEnqueued := false
+	if ls.likeMQ.Unlike(ctx, like.AccountID, like.VideoID); err == nil {
+		mysqlEnqueued = true
+	}
+	if ls.popularityMQ != nil {
+		if err := ls.popularityMQ.Update(ctx, like.VideoID, 1); err == nil {
+			redisEnqueued = true
+		}
+	}
+	if mysqlEnqueued && redisEnqueued {
+		return nil
+	}
+
 	if !mysqlEnqueued {
 		err := ls.repo.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			dele := tx.Where("video_id=? AND account_id = ?", like.VideoID, like.AccountID).Delete(&Like{})
