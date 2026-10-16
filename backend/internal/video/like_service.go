@@ -159,7 +159,7 @@ func (ls *LikeService) ULike(ctx context.Context, like *Like) error {
 			if err := tx.Model(&Video{}).Where("id=?", like.VideoID).UpdateColumn("likes_count", gorm.Expr("GREATEST(likes_count - 1, 0)")).Error; err != nil {
 				return err
 			}
-			return tx.Model(&Video{}).Where("id=?", like.AccountID).UpdateColumn("popularity", gorm.Expr("GREATEST(popularity - 1, 0)")).Error
+			return tx.Model(&Video{}).Where("id=?", like.VideoID).UpdateColumn("popularity", gorm.Expr("GREATEST(popularity - 1, 0)")).Error
 
 		})
 		if err != nil {
