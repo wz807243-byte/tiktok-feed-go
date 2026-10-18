@@ -49,7 +49,7 @@ func (cs *CommentService) Publish(ctx context.Context, comment *Comment) error {
 			if err := tx.Select("id").First(&Video{}, comment.VideoID).Error; err != nil {
 				return errors.ErrUnsupported
 			}
-			if err := cs.repo.db.Create(comment).Error; err != nil {
+			if err := tx.Create(comment).Error; err != nil {
 				return err
 			}
 			return tx.Model(&Video{}).Where("id", comment.VideoID).UpdateColumn("popularity", gorm.Expr("popularity + 1")).Error

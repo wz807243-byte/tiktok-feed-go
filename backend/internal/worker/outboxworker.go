@@ -58,7 +58,7 @@ func StartConsumer(tmq *rabbitmq.TimelineMQ, queueName string, redisClient *redi
 
 	go func() {
 		for {
-			// 每次重连创建独立的 Channel，不与发布者共用
+			
 			ch, err := rmq.NewChannel()
 			if err != nil {
 				log.Printf("Timeline consumer: 创建 Channel 失败: %v, 5秒后重试", err)
@@ -110,7 +110,7 @@ func StartConsumer(tmq *rabbitmq.TimelineMQ, queueName string, redisClient *redi
 				cancel()
 			}
 
-			// msgs channel 关闭说明 AMQP Channel 断开，关闭并重连
+			
 			ch.Close()
 			log.Printf("Timeline consumer: Channel 断开, 5秒后重连...")
 			time.Sleep(5 * time.Second)

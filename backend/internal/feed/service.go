@@ -115,15 +115,14 @@ func (s *FeedService) ListLatest(ctx context.Context, limit int, latestBefore ti
 			cold = baseVideos[len(baseVideos)-1].CreateTime
 		} else {
 			cold = latestBefore
-
-			sfyek := s.rediscache.Key("sf:stitch:listLatest:%d:%d", remainlimit, cold.UnixMilli())
-			v, err, _ := s.requestGroup.Do(sfyek, func() (interface{}, error) {
-				return s.repo.ListLatest(ctx, remainlimit, cold)
-			})
-			if err == nil {
-				coldVideos := v.([]*video.Video)
-				baseVideos = append(baseVideos, coldVideos...)
-			}
+		}
+		sfyek := s.rediscache.Key("sf:stitch:listLatest:%d:%d", remainlimit, cold.UnixMilli())
+		v, err, _ := s.requestGroup.Do(sfyek, func() (interface{}, error) {
+			return s.repo.ListLatest(ctx, remainlimit, cold)
+		})
+		if err == nil {
+			coldVideos := v.([]*video.Video)
+			baseVideos = append(baseVideos, coldVideos...)
 		}
 
 	}
@@ -232,7 +231,7 @@ func (s *FeedService) GetVideoByIDs(ctx context.Context, videoIDs []uint) ([]*vi
 				if res != nil {
 					if str, ok := res.(string); ok {
 						var v video.Video
-						if err := json.Unmarshal([]byte(str), &v); err != nil {
+						if err := json.Unmarshal([]byte(str), &v); err == nil {
 							videoMap[id] = &v
 							if s.localcache != nil {
 								s.localcache.Set(cacheKey[i], v, 5*time.Second)

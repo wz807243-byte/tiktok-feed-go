@@ -194,7 +194,7 @@ func (as *AccountService) RefreshAccessToken(ctx context.Context, newToken strin
 			accountID, parseErr := strconv.ParseUint(string(accountIDBytes), 10, 64)
 			if parseErr == nil {
 				account, findErr := as.FindByID(ctx, uint(accountID))
-				if findErr == nil || account != nil && account.RefreshToken == newToken {
+				if findErr == nil && account != nil && account.RefreshToken == newToken {
 					accessToken, tokenErr := auth.GenerateToken(account.ID, account.Username)
 					if tokenErr != nil {
 						return 0, "", "", tokenErr

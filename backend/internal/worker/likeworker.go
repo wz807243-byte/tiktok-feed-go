@@ -41,6 +41,9 @@ func (w *LikeWorker) Run(ctx context.Context) error {
 		nil,
 	)
 	if err != nil {
+
+
+		
 		return err
 	}
 

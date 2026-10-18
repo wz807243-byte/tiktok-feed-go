@@ -18,18 +18,18 @@ func NewSocialRepository(db *gorm.DB) *SocialRepository {
 // ok
 func (r *SocialRepository) IsFollowed(ctx context.Context, social *Social) (bool, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Where("follower_id = ? AND vlogger_id = ?", social.FollowerID, social.VloggerID).
+	if err := r.db.WithContext(ctx).Model(&Social{}).Where("follower_id = ? AND vlogger_id = ?", social.FollowerID, social.VloggerID).
 		Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
 }
 func (r *SocialRepository) Foll(ctx context.Context, social *Social) error {
-	return r.db.WithContext(ctx).Model(&Social{}).Create(social).Error
+	return r.db.WithContext(ctx).Create(social).Error
 }
 
 func (r *SocialRepository) UnFoll(ctx context.Context, social *Social) error {
-	return r.db.WithContext(ctx).Model(&Social{}).Where("follower_id = ? AND vlogger_id = ?", social.FollowerID, social.VloggerID).
+	return r.db.WithContext(ctx).Where("follower_id = ? AND vlogger_id = ?", social.FollowerID, social.VloggerID).
 		Delete(&Social{}).Error
 }
 func (r *SocialRepository) GetAllFoll(ctx context.Context, id uint) ([]*account.Account, error) {
