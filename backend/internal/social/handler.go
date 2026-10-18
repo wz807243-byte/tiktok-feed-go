@@ -124,9 +124,9 @@ func (h *SocialHandler) GetVlogger(c *gin.Context) {
 
 	}
 
-	vloggers, err := h.service.GetAllVloggers(c.Request.Context(), FollowerID)
+	vloggers, err := h.service.GetAllVloggers(c.Request.Context(), followerID)
 	if err != nil {
-		zap.L().Error("failed to list followed accounts", zap.Uint("follower_id", FollowerID), zap.Error(err))
+		zap.L().Error("failed to list followed accounts", zap.Uint("follower_id", followerID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

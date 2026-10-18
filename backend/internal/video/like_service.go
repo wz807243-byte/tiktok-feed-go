@@ -63,7 +63,8 @@ func (ls *LikeService) Like(ctx context.Context, like *Like, cache *rediscache.C
 	like.CreatedAt = time.Now()
 	mysqlEnqueued := false
 	redisEnqueued := false
-	if ls.likeMQ.Like(ctx, like.AccountID, like.VideoID); err == nil {
+
+	if err := ls.likeMQ.Like(ctx, like.AccountID, like.VideoID); err == nil {
 		mysqlEnqueued = true
 	}
 
@@ -100,9 +101,9 @@ func (ls *LikeService) Like(ctx context.Context, like *Like, cache *rediscache.C
 		if err != nil {
 			return err
 		}
-		if !redisEnqueued {
-			UpdatePopularityCache(ctx, ls.cache, like.VideoID, 1)
-		}
+	}
+	if !redisEnqueued {
+		UpdatePopularityCache(ctx, ls.cache, like.VideoID, 1)
 	}
 
 	return nil
@@ -139,7 +140,7 @@ func (ls *LikeService) ULike(ctx context.Context, like *Like) error {
 		mysqlEnqueued = true
 	}
 	if ls.popularityMQ != nil {
-		if err := ls.popularityMQ.Update(ctx, like.VideoID, 1); err == nil {
+		if err := ls.popularityMQ.Update(ctx, like.VideoID, -1); err == nil {
 			redisEnqueued = true
 		}
 	}

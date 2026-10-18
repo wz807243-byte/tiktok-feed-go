@@ -54,7 +54,7 @@ func (r *SocialRepository) GetAllFoll(ctx context.Context, id uint) ([]*account.
 }
 func (r *SocialRepository) GetAllVloggers(ctx context.Context, FollowerID uint) ([]*account.Account, error) {
 	var relation []Social
-	if err := r.db.WithContext(ctx).Model(&Social{}).Where("follower_id = ?", FollowerID).Find(&relation).Limit(200).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&Social{}).Where("follower_id = ?", FollowerID).Limit(200).Find(&relation).Error; err != nil {
 		return nil, err
 	}
 	vloggerID := make([]uint, 0, len(relation))

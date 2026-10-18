@@ -41,6 +41,7 @@ func NewLikeMQ(base *RabbitMQ) (*LikeMQ, error) {
 
 	if err := DeclareTopic(ch, likeExchange, likeQueue, likeBindingKey); err != nil {
 		ch.Close()
+		return nil, err
 	}
 	return &LikeMQ{ch: ch}, nil
 }

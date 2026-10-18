@@ -58,7 +58,10 @@ func (s *FeedService) ListLatest(ctx context.Context, limit int, latestBefore ti
 					Member: fmt.Sprintf("%d", vid.ID),
 				})
 			}
-			s.rediscache.ZAdd(bgCtx, s.rediscache.Key("feed:global_timeline"), zElements...)
+			if err := s.rediscache.ZAdd(bgCtx, s.rediscache.Key("feed:global_timeline"), zElements...); err != nil {
+				return nil, fmt.Errorf("rebuild global timeline cache: %w", err)
+
+			}
 			return "SUCCESS", nil
 		})
 		if err != nil {
@@ -263,7 +266,7 @@ func (s *FeedService) GetVideoByIDs(ctx context.Context, videoIDs []uint) ([]*vi
 
 				v, err, _ := s.requestGroup.Do(sfKey, func() (interface{}, error) {
 					videoList, err := s.repo.GetByIDs(ctx, []uint{videoID})
-					if err != nil || len(videoList) == nil {
+					if err != nil || len(videoList) == 0 {
 						return nil, err
 					}
 					safeCopy := *videoList[0]

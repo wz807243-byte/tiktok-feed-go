@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"errors"
+	"feedsystem_video_go/internal/apierror"
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"strings"
 
@@ -13,7 +14,6 @@ type CommentService struct {
 	repo            *CommentRepository
 	VideoRepository *VideoRepository
 	cache           *rediscache.Client
-	
 }
 
 func NewCommentService(repo *CommentRepository,
@@ -73,8 +73,8 @@ func (cs *CommentService) Delete(ctx context.Context, commentid uint, accountID 
 	if comment == nil {
 		return errors.New("comment not found")
 	}
-	if accountID == comment.AuthorID {
-		return err
+	if comment.AuthorID != accountID {
+		return apierror.ErrUnauthorized
 	}
 	return cs.repo.DeleteComment(ctx, comment)
 }
