@@ -33,8 +33,8 @@ func (cr *CommentRepository) GetAllComments(ctx context.Context, id uint) ([]Com
 	if err := cr.db.WithContext(ctx).
 		Where("video_id = ?", id).
 		Order("created_at asc").
-		Find(&comment).
-		Limit(200).Error; err != nil {
+		Limit(200).
+		Find(&comment).Error; err != nil {
 		return nil, err
 	}
 	return comment, nil

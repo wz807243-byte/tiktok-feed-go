@@ -263,7 +263,7 @@ func (s *FeedService) GetVideoByIDs(ctx context.Context, videoIDs []uint) ([]*vi
 
 				v, err, _ := s.requestGroup.Do(sfKey, func() (interface{}, error) {
 					videoList, err := s.repo.GetByIDs(ctx, []uint{videoID})
-					if err != nil || videoList == nil {
+					if err != nil || len(videoList) == nil {
 						return nil, err
 					}
 					safeCopy := *videoList[0]
@@ -403,7 +403,7 @@ func (s *FeedService) ListByFollowing(ctx context.Context, limit int, latestTime
 					time.Sleep(20 * time.Millisecond)
 					if b, err := s.rediscache.GetBytes(caCtx, cacheKey); err == nil {
 						var cached ListByFollowingResponse
-						if err := json.Unmarshal(b, &cached); err != nil {
+						if err := json.Unmarshal(b, &cached); err == nil {
 							return cached, nil
 						}
 					}
@@ -447,7 +447,7 @@ func (s *FeedService) ListByPopularity(ctx context.Context, limit int, reqAsOf i
 		exists, _ := s.rediscache.Exists(opCtx, dest)
 		if !exists {
 			_ = s.rediscache.ZUnionStore(opCtx, dest, keys, "SUM")
-			_ = s.rediscache.Expire(opCtx, dest, 2*time.Millisecond)
+			_ = s.rediscache.Expire(opCtx, dest, 2*time.Minute)
 		}
 		start := int64(offset)
 		stop := start + int64(limit) - 1

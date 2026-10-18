@@ -13,6 +13,7 @@ type CommentService struct {
 	repo            *CommentRepository
 	VideoRepository *VideoRepository
 	cache           *rediscache.Client
+	
 }
 
 func NewCommentService(repo *CommentRepository,
@@ -72,7 +73,7 @@ func (cs *CommentService) Delete(ctx context.Context, commentid uint, accountID 
 	if comment == nil {
 		return errors.New("comment not found")
 	}
-	if accountID != comment.AuthorID {
+	if accountID == comment.AuthorID {
 		return err
 	}
 	return cs.repo.DeleteComment(ctx, comment)

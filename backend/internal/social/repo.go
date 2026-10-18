@@ -34,7 +34,7 @@ func (r *SocialRepository) UnFoll(ctx context.Context, social *Social) error {
 }
 func (r *SocialRepository) GetAllFoll(ctx context.Context, id uint) ([]*account.Account, error) {
 	var allfoll []Social
-	if err := r.db.WithContext(ctx).Model(&Social{}).Where("vlogger_id = ?", id).Find(&allfoll).Limit(200).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&Social{}).Where("vlogger_id = ?", id).Limit(200).Find(&allfoll).Error; err != nil {
 		return nil, err
 	}
 	follwersID := make([]uint, 0, len(allfoll))

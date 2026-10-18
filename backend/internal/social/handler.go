@@ -85,22 +85,19 @@ func (h *SocialHandler) GetallFoll(c *gin.Context) {
 		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	VloggerID := req.VloggerID
-	if VloggerID == 0 {
-		zap.L().Warn("followers request missing vlogger ID")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "vlogger_id is required"})
-		return
+	vloggerID := req.VloggerID
+	if vloggerID == 0 {
+		accountID, err := jwt.GetAccountID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		vloggerID = accountID
 	}
-	var err error
-	VloggerID, err = jwt.GetAccountID(c)
+
+	follwers, err := h.service.GetAllFollow(c.Request.Context(), vloggerID)
 	if err != nil {
-		zap.L().Warn("failed to get account ID for followers", zap.Error(err))
-		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
-		return
-	}
-	follwers, err := h.service.GetAllFollow(c.Request.Context(), VloggerID)
-	if err != nil {
-		zap.L().Error("failed to list followers", zap.Uint("vlogger_id", VloggerID), zap.Error(err))
+		zap.L().Error("failed to list followers", zap.Uint("vlogger_id", vloggerID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -116,20 +113,17 @@ func (h *SocialHandler) GetVlogger(c *gin.Context) {
 		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	FollowerID := req.FollowerID
-	if FollowerID <= 0 {
-		zap.L().Warn("followed accounts request missing follower ID")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "follower_id is required"})
-		return
+	followerID := req.FollowerID
+	if followerID == 0 {
+		accountID, err := jwt.GetAccountID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		followerID = accountID
 
 	}
-	var err error
-	FollowerID, err = jwt.GetAccountID(c)
-	if err != nil {
-		zap.L().Warn("failed to get account ID for followed accounts", zap.Error(err))
-		c.JSON(apierror.ClassifyHTTPStatus(err), gin.H{"error": err.Error()})
-		return
-	}
+
 	vloggers, err := h.service.GetAllVloggers(c.Request.Context(), FollowerID)
 	if err != nil {
 		zap.L().Error("failed to list followed accounts", zap.Uint("follower_id", FollowerID), zap.Error(err))

@@ -52,8 +52,12 @@ func SetRouter(db *gorm.DB, cache *rediscache.Client, rmq *rabbitmq.RabbitMQ) *g
 	// video
 
 	videoRepository := video.NewVideoRepositor(db)
-
-	videoService := video.NewVideoService(videoRepository, cache)
+	popularityMQ, err := rabbitmq.NewPopularityMQ(rmq)
+	if err != nil {
+		log.Printf("PopularityMQ init failed (mq disabled): %v", err)
+		popularityMQ = nil
+	}
+	videoService := video.NewVideoService(videoRepository, cache, popularityMQ)
 	videoHandler := video.NewVideoHandler(videoService, accountService)
 	videoGroup := r.Group("/video")
 
@@ -67,8 +71,13 @@ func SetRouter(db *gorm.DB, cache *rediscache.Client, rmq *rabbitmq.RabbitMQ) *g
 
 	// like
 
+	likeMQ, err := rabbitmq.NewLikeMQ(rmq)
+	if err != nil {
+		log.Printf("LikeMQ init failed (mq disabled): %v", err)
+		likeMQ = nil
+	}
 	likeRepository := video.NewLiekRepostiory(db)
-	likeService := video.NewLikeService(likeRepository, videoRepository, cache, &rabbitmq.LikeMQ{}, &rabbitmq.PopularityMQ{})
+	likeService := video.NewLikeService(likeRepository, videoRepository, cache, likeMQ, popularityMQ)
 	likeHandler := video.NewLikeHandler(likeService)
 	likeGroup := r.Group("/like")
 	protectedLikeGroup := likeGroup.Group("")
@@ -95,8 +104,13 @@ func SetRouter(db *gorm.DB, cache *rediscache.Client, rmq *rabbitmq.RabbitMQ) *g
 	protectedCommentGroup.POST("/delete", commentHandler.DeletComment)
 
 	// social
+	socialMQ, err := rabbitmq.NewSocialMQ(rmq)
+	if err != nil {
+		log.Printf("SocialMQ init failed (mq disabled): %v", err)
+		socialMQ = nil
+	}
 	socialRepository := social.NewSocialRepository(db)
-	socialService := social.NewSocialService(socialRepository, accountRepository, cache)
+	socialService := social.NewSocialService(socialRepository, accountRepository, cache, socialMQ)
 	socialHandler := social.NewSocialHandler(socialService)
 	socialGroup := r.Group("/social")
 	protectedSocialGroup := socialGroup.Group("")

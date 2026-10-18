@@ -187,7 +187,7 @@ func (as *AccountService) RefreshAccessToken(ctx context.Context, newToken strin
 		return 0, "", "", errors.New("refresh token is empty")
 	}
 	if as.cache != nil {
-		cacheCtx, cancel := context.WithTimeout(ctx, 50*time.Microsecond)
+		cacheCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 		defer cancel()
 		accountIDBytes, cacheErr := as.cache.GetBytes(cacheCtx, as.cache.Key("refresh:%s", newToken))
 		if cacheErr == nil {

@@ -3,6 +3,7 @@ package video
 import (
 	"context"
 	"errors"
+	"feedsystem_video_go/internal/middleware/rabbitmq"
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"strings"
 	"time"
@@ -11,13 +12,14 @@ import (
 )
 
 type VideoService struct {
-	videorepo *VideoRepository
-	cache     *rediscache.Client
-	cacheTTL  time.Duration
+	videorepo    *VideoRepository
+	cache        *rediscache.Client
+	cacheTTL     time.Duration
+	popularityMQ *rabbitmq.PopularityMQ
 }
 
-func NewVideoService(repo *VideoRepository, cache *rediscache.Client) *VideoService {
-	return &VideoService{videorepo: repo, cache: cache, cacheTTL: 5 * time.Minute}
+func NewVideoService(repo *VideoRepository, cache *rediscache.Client, popularityMQ *rabbitmq.PopularityMQ) *VideoService {
+	return &VideoService{videorepo: repo, cache: cache, cacheTTL: 5 * time.Minute, popularityMQ: popularityMQ}
 }
 func (vs *VideoService) Publish(ctx context.Context, video *Video) error {
 	if video == nil {

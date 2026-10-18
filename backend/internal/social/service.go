@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"feedsystem_video_go/internal/account"
+	"feedsystem_video_go/internal/middleware/rabbitmq"
 	rediscache "feedsystem_video_go/internal/middleware/redis"
 )
 
 type SocialService struct {
 	repo        *SocialRepository
 	accountrepo *account.AccountRepository
-
-	cache *rediscache.Client
+	socialMQ    *rabbitmq.SocialMQ
+	cache       *rediscache.Client
 }
 
-func NewSocialService(repo *SocialRepository, accountrepo *account.AccountRepository, cache *rediscache.Client) *SocialService {
-	return &SocialService{repo: repo, accountrepo: accountrepo, cache: cache}
+func NewSocialService(repo *SocialRepository, accountrepo *account.AccountRepository, cache *rediscache.Client, socialMQ *rabbitmq.SocialMQ) *SocialService {
+	return &SocialService{repo: repo, accountrepo: accountrepo, cache: cache, socialMQ: socialMQ}
 }
 func (s *SocialService) Follow(ctx context.Context, social *Social) error {
 	_, err := s.accountrepo.FindByID(ctx, social.FollowerID)
