@@ -68,19 +68,14 @@ func SoftJWTAuth(accountRepo *account.AccountRepository, cache *rediscache.Clien
 }
 
 func check(c *gin.Context, claims *auth.Claims, tokenString string, accountRepo *account.AccountRepository, cache *rediscache.Client) {
-	key := cache.Key("account:%d", claims.AccountID)
-
 	// 先查 Redis
 	if cache != nil {
+		key := cache.Key("account:%d", claims.AccountID)
 		cacheCtx, cancel := context.WithTimeout(c.Request.Context(), 50*time.Millisecond)
 		defer cancel()
 
 		b, err := cache.GetBytes(cacheCtx, key)
-		if err == nil {
-			if string(b) != tokenString {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
-				return
-			}
+		if err == nil && string(b) == tokenString {
 			c.Set("accountID", claims.AccountID)
 			c.Set("username", claims.Username)
 			c.Next()
@@ -88,9 +83,9 @@ func check(c *gin.Context, claims *auth.Claims, tokenString string, accountRepo 
 		}
 	}
 
-	// Redis 故障/未启用：查 DB 兜底
+	// Redis 未命中、故障或与令牌不一致：以 DB 当前令牌为准
 	accountInfo, err := accountRepo.FindByID(c.Request.Context(), claims.AccountID)
-	if err != nil || accountInfo.Token == "" || accountInfo.Token != tokenString {
+	if err != nil || accountInfo == nil || accountInfo.Token == "" || accountInfo.Token != tokenString {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
 		return
 	}
@@ -99,7 +94,7 @@ func check(c *gin.Context, claims *auth.Claims, tokenString string, accountRepo 
 		cacheCtx, cancel := context.WithTimeout(c.Request.Context(), 50*time.Millisecond)
 		defer cancel()
 
-		if err := cache.SetBytes(cacheCtx, key, []byte(tokenString), 24*time.Hour); err != nil {
+		if err := cache.SetBytes(cacheCtx, cache.Key("account:%d", claims.AccountID), []byte(tokenString), 24*time.Hour); err != nil {
 			zap.L().Error("failed to set cache", zap.Error(err))
 		}
 	}

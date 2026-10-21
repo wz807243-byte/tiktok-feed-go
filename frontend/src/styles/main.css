@@ -1,0 +1,193 @@
+/* ===== 设计 Token（取自 Figma 设计稿实测色值）===== */
+:root {
+  --bg-primary: #130e20;          /* Feed 背景·深紫黑 */
+  --bg-nav: #090b0f;              /* 底部导航背景 */
+  --bg-panel: #121214;            /* 弹层面板 */
+  --bg-input: #1f1f23;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --accent-red: #fe2c55;          /* 品牌红：点赞/关注 */
+  --accent-cyan: #25f4ee;         /* 品牌青：认证徽章/装饰 */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --mask-bottom: linear-gradient(transparent 55%, rgba(0, 0, 0, 0.55));
+  --nav-h: calc(50px + env(safe-area-inset-bottom, 0px));
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background: #000;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  overscroll-behavior: none;
+}
+
+/* 默认：移动端窄屏容器；>=900px 切换为桌面布局（侧栏 + 主内容区） */
+.app-shell {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.app-main {
+  height: 100%;
+}
+
+@media (min-width: 900px) {
+  .app-shell {
+    max-width: none;
+    display: flex;
+  }
+
+  .app-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .page {
+    padding-bottom: 0;
+  }
+
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea {
+  border: none;
+  outline: none;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  border-radius: var(--radius-md);
+}
+
+img {
+  display: block;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== 通用组件样式 ===== */
+.page {
+  height: 100%;
+  padding-bottom: var(--nav-h);
+  overflow-y: auto;
+}
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--bg-nav);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.empty-hint {
+  padding: 60px 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 视频网格（好友/我的 页面共用） */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  padding: 2px;
+}
+
+.video-grid .cell {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #1a1a1e;
+  overflow: hidden;
+}
+
+.video-grid .cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-grid .cell .meta {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* toast 动画 */
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
+}

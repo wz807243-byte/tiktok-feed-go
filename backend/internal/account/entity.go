@@ -43,8 +43,8 @@ type RenameRequest struct {
 	NewUsername string `json:"new_username"`
 }
 type UpdateProfileRequest struct {
-	AvatarURL string `json:"avatar_url"`
-	Bio       string `json:"bio"`
+	AvatarURL *string `json:"avatar_url"`
+	Bio       *string `json:"bio"`
 }
 
 type ChangePasswordRequest struct {

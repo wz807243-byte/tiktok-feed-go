@@ -5,10 +5,16 @@ import (
 	"feedsystem_video_go/internal/config"
 	"feedsystem_video_go/internal/db"
 	"feedsystem_video_go/internal/middleware/logger"
+	"feedsystem_video_go/internal/middleware/rabbitmq"
+	rediscache "feedsystem_video_go/internal/middleware/redis"
 	"feedsystem_video_go/internal/observability"
+	"feedsystem_video_go/internal/social"
+	"feedsystem_video_go/internal/video"
+	"feedsystem_video_go/internal/worker"
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -95,6 +101,17 @@ func main() {
 	})
 	defer db.CloseDB(sqlDB)
 
+	cache, err := rediscache.NewFromEnv(&cfg.Redis)
+	if err != nil {
+		logger.Fatalf("Failed to create Redis client: %v", err)
+	}
+	defer cache.Close()
+	connectWithRetry("Redis", 10, func() error {
+		pingCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		return cache.Ping(pingCtx)
+	})
+
 	// RabbitMQ（带重试）
 	url := "amqp://" + cfg.RabbitMQ.Username + ":" + cfg.RabbitMQ.Password + "@" + cfg.RabbitMQ.Host + ":" + strconv.Itoa(cfg.RabbitMQ.Port) + "/"
 	var conn *amqp.Connection
@@ -120,10 +137,42 @@ func main() {
 		defer pprofServer.Close()
 	}
 
-	// 新增 Worker：仿写一个消费者，在这里 runWorkerWithRetry(ctx, "名字", conn, 消费函数) 起一个
+	likes := video.NewLiekRepostiory(sqlDB)
+	videos := video.NewVideoRepositor(sqlDB)
+	socials := social.NewSocialRepository(sqlDB)
+	var consumers sync.WaitGroup
+	startConsumer := func(name string, run func(*amqp.Channel) error) {
+		consumers.Add(1)
+		go func() {
+			defer consumers.Done()
+			runWorkerWithRetry(ctx, name, conn, run)
+		}()
+	}
+
+	startConsumer("LikeWorker", func(ch *amqp.Channel) error {
+		const queue = "like.events"
+		if err := rabbitmq.DeclareTopic(ch, queue, queue, "like.*"); err != nil {
+			return err
+		}
+		return worker.NewLikeWorker(ch, likes, videos, queue).Run(ctx)
+	})
+	startConsumer("PopularityWorker", func(ch *amqp.Channel) error {
+		const queue = "video.popularity.events"
+		if err := rabbitmq.DeclareTopic(ch, queue, queue, "video.popularity.*"); err != nil {
+			return err
+		}
+		return worker.NewPopularityWorker(ch, cache, queue).Run(ctx)
+	})
+	startConsumer("SocialWorker", func(ch *amqp.Channel) error {
+		const queue = "social.events"
+		if err := rabbitmq.DeclareTopic(ch, queue, queue, "social.*"); err != nil {
+			return err
+		}
+		return worker.NewSocialWorker(ch, socials, queue).Run(ctx)
+	})
 
 	<-ctx.Done()
 	logger.Printf("Worker shutting down...")
-	time.Sleep(2 * time.Second) // 等待正在处理的消息完成
+	consumers.Wait()
 	logger.Printf("Worker stopped")
 }

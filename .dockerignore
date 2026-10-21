@@ -3,3 +3,10 @@
 backend/.run
 bin
 **/*.log
+
+# Frontend build dependencies and output are not backend build inputs
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/.env.local
+frontend/.env.*.local

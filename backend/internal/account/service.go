@@ -113,11 +113,11 @@ func (as *AccountService) Logout(ctx context.Context, accountID uint) error {
 }
 func (as *AccountService) UpdateProfile(ctx context.Context, accountID uint, req *UpdateProfileRequest) error {
 	updates := map[string]interface{}{}
-	if req.Bio != "" {
-		updates["bio"] = strings.TrimSpace(req.Bio)
+	if req.Bio != nil {
+		updates["bio"] = strings.TrimSpace(*req.Bio)
 	}
-	if req.AvatarURL != "" {
-		updates["avatar_url"] = strings.TrimSpace(req.AvatarURL)
+	if req.AvatarURL != nil {
+		updates["avatar_url"] = strings.TrimSpace(*req.AvatarURL)
 	}
 	if len(updates) == 0 {
 		return errors.New("nothing to update")
@@ -186,45 +186,47 @@ func (as *AccountService) RefreshAccessToken(ctx context.Context, newToken strin
 	if newToken == "" {
 		return 0, "", "", errors.New("refresh token is empty")
 	}
+	var account *Account
 	if as.cache != nil {
 		cacheCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
-		defer cancel()
 		accountIDBytes, cacheErr := as.cache.GetBytes(cacheCtx, as.cache.Key("refresh:%s", newToken))
+		cancel()
 		if cacheErr == nil {
-			accountID, parseErr := strconv.ParseUint(string(accountIDBytes), 10, 64)
-			if parseErr == nil {
-				account, findErr := as.FindByID(ctx, uint(accountID))
-				if findErr == nil && account != nil && account.RefreshToken == newToken {
-					accessToken, tokenErr := auth.GenerateToken(account.ID, account.Username)
-					if tokenErr != nil {
-						return 0, "", "", tokenErr
-					}
-					if err := as.accountRepository.UpdateToken(ctx, account.ID, accessToken); err != nil {
-						return 0, "", "", err
-					}
-					_ = as.cache.SetBytes(cacheCtx, as.cache.Key("account:%d", account.ID), []byte(accessToken), 24*time.Hour)
-					return account.ID, account.Username, accessToken, nil
+			if accountID, err := strconv.ParseUint(string(accountIDBytes), 10, 64); err == nil {
+				candidate, err := as.FindByID(ctx, uint(accountID))
+				if err == nil && candidate != nil && candidate.RefreshToken == newToken {
+					account = candidate
 				}
 			}
 		}
 	}
-
-	accounts, err := as.accountRepository.FanfAll(ctx)
-	if err != nil {
-		return 0, "", "", err
-	}
-	for _, account := range accounts {
-		if account.RefreshToken != newToken {
-			continue
-		}
-		accessToken, err := auth.GenerateToken(account.ID, account.Username)
+	if account == nil {
+		var err error
+		account, err = as.accountRepository.FindByRefreshToken(ctx, newToken)
 		if err != nil {
 			return 0, "", "", err
 		}
-		if err := as.accountRepository.UpdateToken(ctx, account.ID, accessToken); err != nil {
-			return 0, "", "", err
-		}
-		return account.ID, account.Username, accessToken, nil
 	}
-	return 0, "", "", errors.New("invalid refresh token")
+	accessToken, err := auth.GenerateToken(account.ID, account.Username)
+	if err != nil {
+		return 0, "", "", err
+	}
+	if err := as.accountRepository.UpdateToken(ctx, account.ID, accessToken); err != nil {
+		return 0, "", "", err
+	}
+	if as.cache != nil {
+		// Start the write deadline after SQL work; cached lookup and DB fallback
+		// must both replace the access token that JWT middleware reads.
+		cacheCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+		defer cancel()
+		if err := as.cache.SetBytes(cacheCtx, as.cache.Key("account:%d", account.ID), []byte(accessToken), 24*time.Hour); err != nil {
+			// A stale value must not indefinitely hide the newly committed token.
+			deleteCtx, deleteCancel := context.WithTimeout(ctx, 50*time.Millisecond)
+			_ = as.cache.Del(deleteCtx, as.cache.Key("account:%d", account.ID))
+			deleteCancel()
+		}
+		_ = as.cache.SetBytes(cacheCtx, as.cache.Key("account:%d:refresh", account.ID), []byte(newToken), 24*time.Hour)
+		_ = as.cache.SetBytes(cacheCtx, as.cache.Key("refresh:%s", newToken), []byte(strconv.FormatUint(uint64(account.ID), 10)), 24*time.Hour)
+	}
+	return account.ID, account.Username, accessToken, nil
 }
